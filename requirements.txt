@@ -1,0 +1,9 @@
+httpx==0.28.1
+pandas==2.2.3
+sqlalchemy==2.0.41
+psycopg2-binary==2.9.9
+click==8.1.8
+rich==13.9.4
+python-dotenv==1.1.0
+apscheduler==3.10.4
+pytest==8.4.2
