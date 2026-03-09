@@ -1,4 +1,3 @@
-from typing import List, Dict, Optional
 import pandas as pd
 
 
@@ -36,7 +35,6 @@ def parse_espn_stats(raw_stats):
     }
 
     for category in categories:
-        cat_name = category.get("name", "")
         stat_names = category.get("names", [])
         stat_values = category.get("values", [])
 

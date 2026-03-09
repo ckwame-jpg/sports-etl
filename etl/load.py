@@ -1,5 +1,7 @@
-from typing import Optional, Dict
+from typing import Dict, Optional
+
 from sqlalchemy.orm import Session
+
 from etl.models import Player, PlayerStats
 
 

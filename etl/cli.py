@@ -22,7 +22,7 @@ def run(season):
 @cli.command()
 def status():
     """Show recent pipeline runs."""
-    from etl.database import SessionLocal, Base, engine
+    from etl.database import Base, SessionLocal, engine
     from etl.models import PipelineRun
 
     Base.metadata.create_all(bind=engine)
@@ -59,7 +59,7 @@ def status():
 @click.option("--limit", default=20, help="Number of players to show")
 def top(limit):
     """Show top fantasy players from the latest run."""
-    from etl.database import SessionLocal, Base, engine
+    from etl.database import Base, SessionLocal, engine
     from etl.models import Player, PlayerStats
 
     Base.metadata.create_all(bind=engine)

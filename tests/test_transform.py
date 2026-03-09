@@ -1,5 +1,9 @@
-import pandas as pd
-from etl.transform import calculate_fantasy_points, transform_players, transform_stats, parse_espn_stats
+from etl.transform import (
+    calculate_fantasy_points,
+    parse_espn_stats,
+    transform_players,
+    transform_stats,
+)
 
 
 def test_fantasy_points_qb():

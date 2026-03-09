@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
+
+import httpx
 from rich.console import Console
 from rich.progress import Progress
-from etl.database import SessionLocal, Base, engine
-from etl.models import PipelineRun
+
+from etl.database import Base, SessionLocal, engine
 from etl.extract import extract_all, fetch_player_stats
-from etl.transform import transform_players, parse_espn_stats, transform_stats
 from etl.load import upsert_player, upsert_stats
+from etl.models import PipelineRun
+from etl.transform import parse_espn_stats, transform_players, transform_stats
 
 console = Console()
 
@@ -20,24 +23,21 @@ def run_pipeline(season=2024):
     db.commit()
 
     try:
-        # Extract
         console.print("[cyan]Extracting player data...[/cyan]")
         raw_players, season = extract_all(season)
         console.print(f"  Found {len(raw_players)} players across all teams")
 
-        # Transform
         console.print("[cyan]Transforming data...[/cyan]")
-        df = transform_players(raw_players, season)
-        console.print(f"  {len(df)} fantasy-relevant players after filtering")
+        dataframe = transform_players(raw_players, season)
+        console.print(f"  {len(dataframe)} fantasy-relevant players after filtering")
 
-        # Load
         console.print("[cyan]Loading into database...[/cyan]")
-        records = 0
+        records_processed = 0
 
         with Progress() as progress:
-            task = progress.add_task("Processing players...", total=len(df))
+            task = progress.add_task("Processing players...", total=len(dataframe))
 
-            for _, row in df.iterrows():
+            for _, row in dataframe.iterrows():
                 player = upsert_player(
                     db,
                     external_id=row["id"],
@@ -46,17 +46,15 @@ def run_pipeline(season=2024):
                     position=row.get("position"),
                 )
 
-                # Fetch and load stats for this player
                 try:
                     raw_stats = fetch_player_stats(row["id"], season)
-                    parsed = parse_espn_stats(raw_stats)
-                    if parsed:
-                        transformed = transform_stats(parsed, season)
-                        if transformed:
-                            upsert_stats(db, player.id, season, 0, transformed)
-                            records += 1
-                except Exception:
-                    pass  # Some players have no stats
+                    parsed_stats = parse_espn_stats(raw_stats)
+                    transformed_stats = transform_stats(parsed_stats, season) if parsed_stats else None
+                    if transformed_stats:
+                        upsert_stats(db, player.id, season, 0, transformed_stats)
+                        records_processed += 1
+                except (httpx.HTTPError, KeyError, TypeError, ValueError):
+                    pass
 
                 progress.advance(task)
 
@@ -64,18 +62,18 @@ def run_pipeline(season=2024):
 
         run.finished_at = datetime.now(timezone.utc)
         run.status = "completed"
-        run.records_processed = records
+        run.records_processed = records_processed
         db.commit()
 
-        console.print(f"[green]Pipeline complete. {records} stat records processed.[/green]")
-        return records
+        console.print(f"[green]Pipeline complete. {records_processed} stat records processed.[/green]")
+        return records_processed
 
-    except Exception as e:
+    except Exception as exc:
         run.finished_at = datetime.now(timezone.utc)
         run.status = "failed"
-        run.error_message = str(e)[:500]
+        run.error_message = str(exc)[:500]
         db.commit()
-        console.print(f"[red]Pipeline failed: {e}[/red]")
+        console.print(f"[red]Pipeline failed: {exc}[/red]")
         raise
     finally:
         db.close()

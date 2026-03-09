@@ -1,5 +1,6 @@
-from unittest.mock import patch, MagicMock
-from etl.extract import fetch_teams, fetch_roster
+from unittest.mock import MagicMock, patch
+
+from etl.extract import fetch_roster, fetch_teams
 
 
 def _mock_response(data, status=200):
